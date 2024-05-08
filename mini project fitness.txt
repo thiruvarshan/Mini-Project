@@ -1,0 +1,128 @@
+import mysql.connector
+import tkinter as tk
+from tkinter import messagebox
+
+# Connect to MySQL database
+conn = mysql.connector.connect(
+    host="localhost",
+    user="yourusername",
+    password="yourpassword",
+    database="fitness_tracker"
+)
+cursor = conn.cursor()
+
+# Function to create tables
+def create_tables():
+    cursor.execute('''CREATE TABLE IF NOT EXISTS users (
+                        user_id INT AUTO_INCREMENT PRIMARY KEY,
+                        username VARCHAR(255),
+                        email VARCHAR(255))''')
+
+    cursor.execute('''CREATE TABLE IF NOT EXISTS activities (
+                        activity_id INT AUTO_INCREMENT PRIMARY KEY,
+                        activity_name VARCHAR(255),
+                        calories_burned_per_hour FLOAT)''')
+
+    cursor.execute('''CREATE TABLE IF NOT EXISTS logs (
+                        log_id INT AUTO_INCREMENT PRIMARY KEY,
+                        user_id INT,
+                        activity_id INT,
+                        date DATE,
+                        duration INT,
+                        calories_burned FLOAT,
+                        FOREIGN KEY (user_id) REFERENCES users(user_id),
+                        FOREIGN KEY (activity_id) REFERENCES activities(activity_id))''')
+    conn.commit()
+
+# Function to add a new user
+def add_user():
+    username = username_entry.get()
+    email = email_entry.get()
+    if username and email:
+        cursor.execute('''INSERT INTO users (username, email) VALUES (%s, %s)''', (username, email))
+        conn.commit()
+        messagebox.showinfo("Success", "User added successfully.")
+    else:
+        messagebox.showerror("Error", "Please enter both username and email.")
+
+# Function to add a new activity
+def add_activity():
+    activity_name = activity_name_entry.get()
+    calories_burned_per_hour = calories_burned_entry.get()
+    if activity_name and calories_burned_per_hour:
+        cursor.execute('''INSERT INTO activities (activity_name, calories_burned_per_hour) VALUES (%s, %s)''', (activity_name, calories_burned_per_hour))
+        conn.commit()
+        messagebox.showinfo("Success", "Activity added successfully.")
+    else:
+        messagebox.showerror("Error", "Please enter both activity name and calories burned per hour.")
+
+# Function to log an activity for a user
+def log_activity():
+    user_id = user_id_entry.get()
+    activity_id = activity_id_entry.get()
+    date = date_entry.get()
+    duration = duration_entry.get()
+    if user_id and activity_id and date and duration:
+        cursor.execute('''SELECT calories_burned_per_hour FROM activities WHERE activity_id = %s''', (activity_id,))
+        result = cursor.fetchone()
+        if result:
+            calories_burned = result[0] * (int(duration) / 60.0)  # Assuming duration is in minutes
+            cursor.execute('''INSERT INTO logs (user_id, activity_id, date, duration, calories_burned) VALUES (%s, %s, %s, %s, %s)''',
+                           (user_id, activity_id, date, duration, calories_burned))
+            conn.commit()
+            messagebox.showinfo("Success", "Activity logged successfully.")
+        else:
+            messagebox.showerror("Error", "Invalid activity ID.")
+    else:
+        messagebox.showerror("Error", "Please fill in all fields.")
+
+# GUI
+root = tk.Tk()
+root.title("Fitness Tracker")
+
+# Create tables if they don't exist
+create_tables()
+
+# User Entry
+user_frame = tk.Frame(root)
+user_frame.pack(pady=10)
+tk.Label(user_frame, text="Username:").grid(row=0, column=0)
+username_entry = tk.Entry(user_frame)
+username_entry.grid(row=0, column=1)
+tk.Label(user_frame, text="Email:").grid(row=0, column=2)
+email_entry = tk.Entry(user_frame)
+email_entry.grid(row=0, column=3)
+add_user_btn = tk.Button(user_frame, text="Add User", command=add_user)
+add_user_btn.grid(row=0, column=4)
+
+# Activity Entry
+activity_frame = tk.Frame(root)
+activity_frame.pack(pady=10)
+tk.Label(activity_frame, text="Activity Name:").grid(row=0, column=0)
+activity_name_entry = tk.Entry(activity_frame)
+activity_name_entry.grid(row=0, column=1)
+tk.Label(activity_frame, text="Calories Burned per Hour:").grid(row=0, column=2)
+calories_burned_entry = tk.Entry(activity_frame)
+calories_burned_entry.grid(row=0, column=3)
+add_activity_btn = tk.Button(activity_frame, text="Add Activity", command=add_activity)
+add_activity_btn.grid(row=0, column=4)
+
+# Log Activity Entry
+log_frame = tk.Frame(root)
+log_frame.pack(pady=10)
+tk.Label(log_frame, text="User ID:").grid(row=0, column=0)
+user_id_entry = tk.Entry(log_frame)
+user_id_entry.grid(row=0, column=1)
+tk.Label(log_frame, text="Activity ID:").grid(row=0, column=2)
+activity_id_entry = tk.Entry(log_frame)
+activity_id_entry.grid(row=0, column=3)
+tk.Label(log_frame, text="Date (YYYY-MM-DD):").grid(row=1, column=0)
+date_entry = tk.Entry(log_frame)
+date_entry.grid(row=1, column=1)
+tk.Label(log_frame, text="Duration (minutes):").grid(row=1, column=2)
+duration_entry = tk.Entry(log_frame)
+duration_entry.grid(row=1, column=3)
+log_activity_btn = tk.Button(log_frame, text="Log Activity", command=log_activity)
+log_activity_btn.grid(row=1, column=4)
+
+root.mainloop()
